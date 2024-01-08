@@ -1,0 +1,17 @@
+header:
+  version: 5
+
+repos:
+  meta-raspberrypi:
+    url: https://github.com/agherzan/meta-raspberrypi
+    path: layers/meta-raspberrypi
+    refspec: #-REF_SPEC-#
+
+local_conf_header:
+  z50-raspberry: |
+    # Configure the image FS type
+    #IMAGE_FSTYPES_remove = "ext3 wic.bz2 wic.bmap"
+    #IMAGE_FSTYPES += " tar "
+    #IMAGE_FSTYPES_DEBUGFS = " tar "
+
+    # RPI_USE_U_BOOT = "1"

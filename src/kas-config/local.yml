@@ -1,0 +1,11 @@
+header:
+  version: 5
+
+local_conf_header:
+  z99-local: |
+    # DL_DIR     = "#-WORK_DIR-#/cache/downloads"
+    # SSTATE_DIR = "#-WORK_DIR-#/cache/sstate-cache"
+    # TMPDIR     = "#-WORK_DIR-#/cache/tmp"
+    INHERIT          += "rm_work"
+    PARALLEL_MAKE     = "-j20"
+    PARALLEL_MAKEINST = "-j20"

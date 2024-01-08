@@ -1,0 +1,33 @@
+header:
+  version: 5
+
+repos:
+  poky:
+    url: https://git.yoctoproject.org/git/poky
+    path: layers/poky
+    refspec: #-REF_SPEC-#
+    layers:
+      meta:
+      meta-poky:
+      meta-yocto-bsp:
+
+local_conf_header:
+  # From default dunfell local.conf.
+  # See poky/meta-poky/conf/local.conf.sample
+  z00-poky: |
+    # Additional image features
+    USER_CLASSES ?= "buildstats"
+
+    # By default disable interactive patch resolution (tasks will just fail instead):
+    PATCHRESOLVE = "noop"
+
+    # Disk Space Monitoring during the build
+    BB_DISKMON_DIRS ??= "\
+        STOPTASKS,${TMPDIR},1G,100K \
+        STOPTASKS,${DL_DIR},1G,100K \
+        STOPTASKS,${SSTATE_DIR},1G,100K \
+        STOPTASKS,/tmp,100M,100K \
+        ABORT,${TMPDIR},100M,1K \
+        ABORT,${DL_DIR},100M,1K \
+        ABORT,${SSTATE_DIR},100M,1K \
+        ABORT,/tmp,10M,1K"

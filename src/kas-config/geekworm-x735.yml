@@ -1,0 +1,21 @@
+header:
+  version: 5
+
+# repos:
+#   meta-rust:
+#     url: https://github.com/meta-rust/meta-rust.git
+#     path: layers/meta-rust
+    # meta-iotedge depends on cargo 1.41
+#     refspec: 7ff669d8cedd83a2d3efb73073a63b0a7efffddc
+
+#   meta-tangle:
+#     url: https://github.com/iotaledger/meta-iota
+#     path: layers/meta-tangle
+#     layers:
+#       meta-tangle:
+
+
+local_conf_header:
+  z80-geekworm-x735: |
+     USE_GEEKWORM_X735_HAT = "true"
+     IMAGE_INSTALL:append  = " geekworm-x735"

@@ -1,0 +1,11 @@
+header:
+  version: 5
+
+local_conf_header:
+  z79-i2c: |
+     IMAGE_INSTALL:append = " bcm2835-dev"
+     IMAGE_INSTALL:append = " libgpiod-dev"
+
+     ENABLE_UART = "1"
+     ENABLE_I2C = "1"
+     KERNEL_MODULE_AUTOLOAD:rpi += "i2c-dev i2c-bcm2708"

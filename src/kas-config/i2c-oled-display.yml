@@ -1,0 +1,14 @@
+header:
+  version: 5
+
+repos:
+  meta-sca:
+    url: https://github.com/priv-kweihmann/meta-sca.git
+    path: layers/meta-sca
+    refspec: #-REF_SPEC-#
+
+
+local_conf_header:
+  z81-i2c-oled-display: |
+     USE_I2C_OLED_DISPLAY = "true"
+     IMAGE_INSTALL:append = " i2c-oled-display"
