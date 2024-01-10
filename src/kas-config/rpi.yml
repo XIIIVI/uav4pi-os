@@ -5,7 +5,7 @@ repos:
   meta-raspberrypi:
     url: https://github.com/agherzan/meta-raspberrypi
     path: layers/meta-raspberrypi
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
 
 local_conf_header:
   z50-raspberry: |

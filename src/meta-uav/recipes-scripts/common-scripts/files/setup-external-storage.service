@@ -1,0 +1,17 @@
+[Unit]
+Description=A service to initialize a NVMe HDD
+After=default.target
+DefaultDependencies=no
+Before=shutdown.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/libexec/setup-external-storage.sh nvme
+StandardOutput=journal
+StandardError=journal
+ExecStartPost=/usr/bin/sudo /usr/bin/systemctl disable /etc/systemd/system/setup-external-storage.service
+ExecStop=/usr/bin/sudo /usr/sbin/reboot
+
+[Install]
+WantedBy=default.target

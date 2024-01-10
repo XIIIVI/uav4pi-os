@@ -3,15 +3,6 @@
 MISSING_PARAMETER_COUNT=0
 
 #
-# install_required_packages
-#
-install_required_packages() {
-    log_info "Installing the required packages"
-    sudo apt-get update
-    sudo apt-get install -y figlet jq
-}
-
-#
 # log_section
 #   - param: message
 #

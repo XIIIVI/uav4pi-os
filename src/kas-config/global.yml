@@ -9,13 +9,18 @@ machine: #-MACHINE-#
 distro: #-DISTRO-#
 
 target:
-  - #-TARGET_IMAGE-#
+  - #-FLAVOUR-#
 
 repos:
+  meta-uav:
+    path: layers/
+    layers:
+      meta-uav:
+
   meta-openembedded:
     url: https://git.openembedded.org/meta-openembedded
     path: layers/meta-openembedded
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
     layers:
       meta-oe:
       meta-perl:  
@@ -26,17 +31,12 @@ repos:
   meta-iot-cloud:
     url: https://github.com/intel-iot-devkit/meta-iot-cloud.git
     path: layers/meta-iot-cloud
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
 
   meta-security:
     url: https://git.yoctoproject.org/git/meta-security
     path: layers/meta-security
-    refspec: #-REF_SPEC-#
-
-  meta-virtualization:
-    url: https://git.yoctoproject.org/git/meta-virtualization
-    path: layers/meta-virtualization
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
 
 bblayers_conf_header:
   meta-custom: |
@@ -60,6 +60,8 @@ local_conf_header:
     # Skip connectivity checks
     CONNECTIVITY_CHECK_URIS = ""
 
+    DISTRO_FEATURES:append = " security"
+
     # List of recipes to ignore
     BBMASK += ".*meta-gnome"
     BBMASK += " /meta-iot-cloud/.*/packagegroup-cloud-ibm"
@@ -74,29 +76,19 @@ local_conf_header:
     GLIBC_GENERATE_LOCALES = "fr_FR.UTF-8 en_US.UTF-8"
     IMAGE_LINGUAS = "fr-fr en-us"
 
-    # Docker
-    DISTRO_FEATURES:append = " virtualization"
-    IMAGE_INSTALL:append = " docker"
-
-    # OpenVPN
-    IMAGE_INSTALL:append = " openvpn"
-
     # Python
     IMAGE_INSTALL:append = " python3"
     IMAGE_INSTALL:append = " python3-pip"
     IMAGE_INSTALL:append = " python3-setuptools-scm"
 
     # Common utilities
-    IMAGE_INSTALL:append = " apt"
     IMAGE_INSTALL:append = " ca-certificates"
     IMAGE_INSTALL:append = " coreutils"
     IMAGE_INSTALL:append = " dynamic-hostname"
-    IMAGE_INSTALL:append = " figlet"
     IMAGE_INSTALL:append = " iw"
     IMAGE_INSTALL:append = " nvme-cli"
     IMAGE_INSTALL:append = " os-release"
     IMAGE_INSTALL:append = " p7zip"
-    IMAGE_INSTALL:append = " rsync"
     IMAGE_INSTALL:append = " sudo"
     IMAGE_INSTALL:append = " tree"
     IMAGE_INSTALL:append = " tzdata"    

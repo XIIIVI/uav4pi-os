@@ -1,0 +1,33 @@
+#!/bin/sh
+
+do_start() {
+    mkdir /run/hostname
+
+    # Extract CPU serial number. This Raspberry Pi-specific. Typical format:
+    #
+    #     Serial : 10000000cef52fff
+    #
+    # Note that the colon may be preceded by horizontal tabs.
+    #
+    sn=$(sed -ne 's/^Serial[ \t]*:[ \t]*\([0-9A-Fa-f]*\)$/\1/;T;p' </proc/cpuinfo)
+
+    if [ -n "${sn}" ]; then
+        hostname="#-HOSTNAME-#-${sn}"
+        hostname "${hostname}"
+        echo "${hostname}" >/run/hostname/hostname
+        mount --bind /run/hostname/hostname /etc/hostname
+    fi
+}
+
+do_stop() {
+    umount /etc/hostname
+}
+
+main() {
+    case "$1" in
+    start) do_start ;;
+    stop) do_stop ;;
+    esac
+}
+
+main "$@"

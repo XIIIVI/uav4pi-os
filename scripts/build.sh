@@ -5,14 +5,17 @@ source ./scripts/commons.sh
 
 #
 # install_kas
+#   - param1: workdir
 #
 install_kas() {
-    log_info "[INSTALLING] Kas in ${WORK_DIR}/kas"
+    local WORK_DIR_ARG="${1}"
 
-    rm -Rf "${WORK_DIR}"/kas
-    git clone https://github.com/siemens/kas "${WORK_DIR}"/kas
+    log_info "[INSTALLING] Kas in ${WORK_DIR_ARG}/kas"
 
-    export PATH=${WORK_DIR}/kas/kas-docker:${PATH}
+    rm -Rf "${WORK_DIR_ARG}"/kas
+    git clone https://github.com/siemens/kas "${WORK_DIR_ARG}"/kas
+
+    export PATH=${WORK_DIR_ARG}/kas/kas-docker:${PATH}
 }
 
 #
@@ -21,7 +24,7 @@ install_kas() {
 display_help() {
     log_debug "Usage: ${0} [--build|clean] (build (default) the image or clean the repository)"
     log_debug "            [--data-dir <Folder> (Set the folder containing user's data)]"
-    log_debug "            --image <one of the file .flv in src/flavours>"
+    log_debug "            --flavour <one of the configuration folder src/flavours>"
     log_debug "            [--hostname <Hostname prefix>]"
     log_debug "            [--machine raspberrypi-cm | raspberrypi-cm3 | raspberrypi | raspberrypi0-wifi | raspberrypi0 | raspberrypi2 | raspberrypi3-64 | raspberrypi3 | raspberrypi4-64 | raspberrypi4] (default raspberrypi4-64)"
     log_debug "            [--refspec <Version of Yocto to use> (default: nanbield)]"
@@ -46,7 +49,6 @@ display_settings() {
     log_debug "MACHINE              : ${MACHINE}"
     log_debug "REF_SPEC             : ${REF_SPEC}"
     log_debug "ROOT_PASSWORD        : ${ROOT_PASSWORD}"
-    log_debug "TARGET_IMAGE         : ${TARGET_IMAGE}"
     log_debug "USER_LOGIN           : ${USER_LOGIN}"
     log_debug "USER_PASSWORD        : ${USER_PASSWORD}"
     log_debug "VERBOSE              : ${VERBOSE}"
@@ -54,60 +56,192 @@ display_settings() {
 
 #
 # replace_all_tokens
-#	- param1: distro'name
-#   - param2: distro's version
-#	- param3: image to generate
-#   - param4: folder storing the user's data
-#	- param5: targetted machine
-#	- param6: ref_spec (Yocto's version)
-#	- param7: hostname
-#	- param8: root's password
-#	- param9: user's login
-#	- param10: user's password
-#   - param11: use Geekworm X735
+#	- param1: the list of token to replace
 #
 replace_all_tokens() {
-    log_info "Replacing the tokens"
-    replace_token "#-DISTRO-#" "${DISTRO}"
-    replace_token "#-MACHINE-#" "${MACHINE}"
-    replace_token "#-REF_SPEC-#" "${REF_SPEC}"
-    replace_token "#-TARGET_IMAGE-#" "${TARGET_IMAGE}"
-    replace_token "#-WORK_DIR-#" "${WORK_DIR}"
+    local TOKEN_LIST_ARG=("$@")
+
+    log_info "\t- Replacing the tokens"
+    for ITEM in "${TOKEN_LIST_ARG[@]}"; do
+        replace_token "#-${ITEM}-#" "$(eval echo "\$$ITEM")"
+    done
+}
+
+#
+# load_flavour_settings
+#   - param1: flavour to generate
+#
+load_flavour_settings() {
+    local SETTING_FILE_ARG="${1}"
+    shift
+    local TOKEN_LIST_ARG=("$@")
+
+    log_debug "\t- Preparing the environment from the file ${SETTING_FILE_ARG}"
+
+    # Check if the file exists
+    if [ -f "${SETTING_FILE_ARG}" ]; then
+        # Read the file line by line
+        while IFS='=' read -r KEY VALUE; do
+            # Set environment variable
+            export "${KEY}=${VALUE}"
+
+            TOKEN_LIST_ARG+=("${KEY}")
+
+            log_debug "\t\t- ${KEY}=${VALUE}"
+        done <"${SETTING_FILE_ARG}"
+
+        log_debug "\t- Environment variables have been initialized."
+
+    else
+        log_error "\t- File not found: ${SETTING_FILE_ARG}"
+    fi
+
+    # Return the modified array
+    echo "${TOKEN_LIST_ARG[@]}"
+}
+
+#
+# build_with_kas
+#   - param1: flavour to generate
+#   - param2: workdir
+#
+build_with_kas() {
+    local FLAVOUR_ARG="${1}"
+    local WORK_DIR_ARG="${2}"
+
+    install_kas "${WORK_DIR_ARG}"
+
+    log_debug "Moving the custom meta-layers in ${WORK_DIR_ARG}/layers"
+    mkdir -p "${WORK_DIR_ARG}"/layers/meta-uav
+    mv "${WORK_DIR_ARG}"/meta-uav/* "${WORK_DIR_ARG}"/layers/meta-uav/
+
+    log_debug "\t- Building the image ${FLAVOUR_ARG} (${DISTRO}) with the following configuration files ${KAS_FILES}"
+    local KAS_FILES="${WORK_DIR_ARG}/kas-config/preferred_versions.yml:${WORK_DIR_ARG}/kas-config/local.yml:${WORK_DIR_ARG}/kas-config/poky.yml:${WORK_DIR_ARG}/kas-config/global.yml"
+    KAS_FILES+=":$(awk '{printf "'"${WORK_DIR_ARG}"'/kas-config/%s.yml", $0; if (NR!=1) printf ":"} END{print ""}' "${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour")"
+    log_debug "\t- Updated the list of KAS files to use based on the flavour ${FLAVOUR_ARG}: ${KAS_FILES}"
+    kas/kas-docker build "${KAS_FILES}"
+}
+
+#
+# configure_yocto
+#   - param1: flavour to generate
+#   - param2: workdir
+#
+configure_yocto() {
+    local FLAVOUR_ARG="${1}"
+    local WORK_DIR_ARG="${2}"
+    local CONF_DISTRO_DIR="${WORK_DIR_ARG}/meta-uav/conf/distro"
+    local DISTRO_VALUE="${DISTRO:=${FLAVOUR_ARG//[^[:alnum:]]/}os}"
+
+    log_debug "\t- Configuring the distro configuration file ${CONF_DISTRO_DIR}/${DISTRO_VALUE}.conf for Yocto"
+    cat <<EOF >>"${CONF_DISTRO_DIR}/${DISTRO_VALUE}".conf
+require conf/distro/commons.conf
+
+DISTRO = "${DISTRO_VALUE}"
+DISTRO_NAME = "${DISTRO_NAME:=${DISTRO_VALUE}}"
+DISTRO_VERSION = "${DISTRO_VERSION}"
+DISTRO_CODENAME = "${DISTRO_CODENAME:=${DISTRO_VALUE}}"
+EOF
+
+    log_debug "\t- Creating the recipe for the flavour ${FLAVOUR_ARG} in ${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images"
+    mkdir -p "${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images"
+
+    # Creating the recipe
+    log_debug "\t\t- Creating the file ${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images/${FLAVOUR_ARG}.bb"
+    cat <<EOF >>"${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images/${FLAVOUR_ARG}.bb"
+SUMMARY = "Core image recipe used as a base image for ${FLAVOUR_ARG}"
+DESCRIPTION = "Directly assign IMAGE_INSTALL and IMAGE_FEATURES for \
+               for direct control over image contents."
+
+require ${FLAVOUR_ARG}-common.inc
+require ${FLAVOUR_ARG}-user.inc
+
+IMAGE_INSTALL += "strace"
+
+IMAGE_FEATURES:append = " package-management"
+EOF
+
+    # Creating the common inc file
+    log_debug "\t\t- Creating the file ${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images/${FLAVOUR_ARG}-common.inc"
+    cat <<EOF >>"${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images/${FLAVOUR_ARG}-common.inc"
+LICENSE = "MIT"
+
+inherit core-image
+
+IMAGE_INSTALL = " \
+    packagegroup-core-boot \
+    packagegroup-base-extended \
+    packagegroup-core-ssh-openssh \
+    bash \
+    \${CORE_IMAGE_EXTRA_INSTALL} \
+"
+
+IMAGE_FEATURES += "splash"
+
+IMAGE_FEATURES += "\${EXTRA_IMAGE_FEATURES}"
+
+SDIMG_ROOTFS_TYPE = "ext4"
+
+BBMAASK += "libvorbis"
+
+# Common scripts
+IMAGE_INSTALL += "common-scripts"
+EOF
+
+    # Creating the user inc file
+    log_debug "\t\t- Creating the file ${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images/${FLAVOUR_ARG}-user.inc"
+    cat <<EOF >>"${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images/${FLAVOUR_ARG}-user.inc"
+inherit extrausers
+
+# Use openssl passwd -6 to hash a password.
+#
+# Example: openssl passwd -6 test
+#
+# Dollar signs ($) should be escaped with backslash characters (\).
+
+EXTRA_USERS_PARAMS += " useradd -P '#-USER_PASSWORD-#' #-USER_LOGIN-#; "
+EXTRA_USERS_PARAMS += " usermod -aG docker #-USER_LOGIN-#; "
+EXTRA_USERS_PARAMS += " usermod -aG sudo #-USER_LOGIN-#; "
+EXTRA_USERS_PARAMS += " usermod -P '#-ROOT_PASSWORD-#' root; "
+EOF
 }
 
 #
 # build_os_image
+#   - param1: flavour to generate
 #
 build_os_image() {
-    check_all_mandatory_parameters "TARGET_IMAGE"
+    local FLAVOUR_ARG="${1}"
 
-    if [ -f "${WORK_DIR}/flavours/${TARGET_IMAGE}.flv" ]; then
+    if [ -f "${BASEDIR}/src/flavours/${FLAVOUR_ARG}/flavour" ]; then
+        local WORK_DIR=${WORK_DIR:="$(mktemp -d)"}
+        local DIR_DELIVERY="${BASEDIR}/delivery/${FLAVOUR_ARG}"
+        local DISTRO="${FLAVOUR_ARG//[^[:alnum:]]/}os"
+        local TOKEN_LIST=("DISTRO" "MACHINE" "REF_SPEC" "FLAVOUR" "WORK_DIR")
+
+        log_info "Generating the flavour ${FLAVOUR_ARG} in ${WORK_DIR}"
+        log_debug "\t- Preparing the flavour"
+        cp -R "${BASEDIR}"/src/** "${WORK_DIR}/"
         cd "${WORK_DIR}" || exit
 
-        KAS_FILES+=":$(awk '{printf "'"${WORK_DIR}"'/kas-config/%s.yml", $0; if (NR!=1) printf ":"} END{print ""}' "${WORK_DIR}/flavours/${TARGET_IMAGE}.flv")"
-        log_info "Updating the list of KAS files to use based on the flavour ${TARGET_IMAGE}: ${KAS_FILES}"
-
-        display_settings
-
-        log_info "Preparing the delivery folder ${DIR_DELIVERY}"
-        DIR_DELIVERY="${BASEDIR}/delivery/${TARGET_IMAGE}"
-
+        log_debug "\t- Preparing the delivery folder ${DIR_DELIVERY}"
         mkdir -p "${DIR_DELIVERY}"
 
-        FILE_GENERATED_IMAGE="${TARGET_IMAGE}-${MACHINE}-${DISTRO_VERSION}.wic.bz2"
+        FILE_GENERATED_IMAGE="${FLAVOUR_ARG}-${MACHINE}-${DISTRO_VERSION}.wic.bz2"
 
-        log_info "Cleaning previous deliveries for ${FILE_GENERATED_IMAGE}"
+        log_debug "\t- Cleaning previous deliveries for ${FILE_GENERATED_IMAGE}"
         rm -Rf "${DIR_DELIVERY:?}/${FILE_GENERATED_IMAGE}"
 
-        log_info "Preparing the environment"
-        replace_all_tokens
+        TOKEN_LIST=($(load_flavour_settings "${WORK_DIR}/flavours/${FLAVOUR_ARG}/settings" "${TOKEN_LIST[@]}"))
 
-        log_info "Building the image ${TARGET_IMAGE} (${DISTRO}) with the following configuration files ${KAS_FILES}"
-        export KAS_ALLOW_ROOT=yes && kas/kas-docker build "${KAS_FILES}"
+        configure_yocto "${FLAVOUR_ARG}" "${WORK_DIR}"
+        replace_all_tokens "${TOKEN_LIST[@]}"
 
-        cp "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${TARGET_IMAGE}-${MACHINE}.wic.bz2" "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" &&
+        build_with_kas "${FLAVOUR_ARG}" "${WORK_DIR}"
+
+        cp "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2" "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" &&
             git reset --hard &&
-            log_info "The generated image ${FILE_GENERATED_IMAGE} is available in ${DIR_DELIVERY}"
+            log_debug "\t- [DONE] The generated image ${FILE_GENERATED_IMAGE} is available in ${DIR_DELIVERY}"
         ls -alh "${DIR_DELIVERY}"
 
         if [ -f "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" ]; then
@@ -115,7 +249,7 @@ build_os_image() {
             kas/kas-docker clean
         fi
     else
-        log_error "The image ${TARGET_IMAGE} does not exist"
+        log_error "The flavour ${WORK_DIR}/flavours/${FLAVOUR_ARG}/flavour does not exist"
     fi
 }
 
@@ -123,7 +257,7 @@ build_os_image() {
 # main
 #
 main() {
-    install_required_packages
+    cat ./scripts/builder.banner
 
     # Parses the parameters
     while (("$#")); do
@@ -138,11 +272,6 @@ main() {
             ;;
         --flavour)
             FLAVOUR="${2,,}"
-            shift # past argument
-            shift # past value
-            ;;
-        --image)
-            TARGET_IMAGE="${2,,}"
             shift # past argument
             shift # past value
             ;;
@@ -224,7 +353,6 @@ main() {
     COMMAND=${COMMAND:="build"}
     DEVOPS=${DEVOPS:="false"}
     DIR_DATA=${DIR_DATA:="/datadrive"}
-    DIR_WORK=${DIR_WORK:="${BASEDIR}"}
     DISTRO_VERSION=${DISTRO_VERSION:="#-UNKNOWN_VERSION-#"}
     MACHINE=${MACHINE:="raspberrypi4-64"}
     REF_SPEC=${REF_SPEC:="kirkstone"}
@@ -232,15 +360,11 @@ main() {
     ROOT_PASSWORD=${ROOT_PASSWORD:="Th3B0ss!"}
     USER_LOGIN=${USER_LOGIN:="raspberry"}
     USER_PASSWORD=${USER_PASSWORD:="JuR1_39"}
-    CUSTOM_HOSTNAME=${CUSTOM_HOSTNAME:="${TARGET_IMAGE}"}
-    WORK_DIR=${WORK_DIR:="$(mktemp -d)"}
-    BASEDIR="${WORK_DIR}"
-    KAS_FILES="${WORK_DIR}/kas-config/preferred_versions.yml:${WORK_DIR}/kas-config/local.yml:${WORK_DIR}/kas-config/poky.yml:${WORK_DIR}/kas-config/global.yml"
-    DISTRO="${TARGET_IMAGE}"
+    CUSTOM_HOSTNAME=${CUSTOM_HOSTNAME:="${FLAVOUR}"}
+    BASEDIR="${PWD}"
+    DIR_WORK=${DIR_WORK:="${BASEDIR}"}
 
-    log_info "Setting up the environment"
-    install_kas
-    cp -R ./src/* "${WORK_DIR}/"
+    display_settings
 
     # Extract the version number
     GITVERSION_CONTENT=$(docker run --rm -v "$(pwd):/repo" gittools/gitversion:5.6.10-alpine.3.12-x64-3.1 /repo)
@@ -254,7 +378,8 @@ main() {
 
     case "${COMMAND}" in
     build)
-        build_os_image
+        check_all_mandatory_parameters "FLAVOUR"
+        build_os_image "${FLAVOUR}"
         ;;
 
     clean)

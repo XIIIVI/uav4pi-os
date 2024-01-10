@@ -1,0 +1,16 @@
+[Unit]
+Description=Set hostname for #-HOSTNAME-#
+DefaultDependencies=false
+Before=local-fs.target
+
+[Service]
+Type=oneshot
+StandardOutput=journal
+StandardError=journal
+RemainAfterExit=yes
+# FIXME: hardcoded libexec path
+ExecStart=/usr/libexec/#-HOSTNAME-#-hostname start
+ExecStop=/usr/libexec/#-HOSTNAME-#-hostname stop
+
+[Install]
+WantedBy=systemd-hostnamed.service

@@ -6,17 +6,17 @@ repos:
     url: https://github.com/meta-rust/meta-rust.git
     path: layers/meta-rust
     # meta-iotedge depends on cargo 1.41
-    refspec: 7ff669d8cedd83a2d3efb73073a63b0a7efffddc
+    branch: 7ff669d8cedd83a2d3efb73073a63b0a7efffddc
 
   meta-iotedge:
     url: https://github.com/Azure/meta-iotedge.git
     path: layers/meta-iotedge
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
 
   meta-tpm:
     url: https://git.yoctoproject.org/git/meta-security
     path: layers/meta-security
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
     layers:
       meta-tpm:
 
@@ -30,5 +30,5 @@ local_conf_header:
      IMAGE_INSTALL:append += " iw "
      IMAGE_INSTALL:append += " connman "
      IMAGE_INSTALL:append += " connman-client "
-     PACKAGECONFIG_append_pn-qemu-native = " sdl"
-     PACKAGECONFIG_append_pn-nativesdk-qemu = " sdl"
+     PACKAGECONFIG:append_pn-qemu-native = " sdl"
+     PACKAGECONFIG:append_pn-nativesdk-qemu = " sdl"

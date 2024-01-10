@@ -5,7 +5,7 @@ repos:
   meta-sca:
     url: https://github.com/priv-kweihmann/meta-sca.git
     path: layers/meta-sca
-    refspec: #-REF_SPEC-#
+    branch: #-REF_SPEC-#
 
 
 local_conf_header:
