@@ -1,5 +1,5 @@
 header:
-  version: 5
+  version: 8
 
 local_conf_header:
   z79-i2c: |

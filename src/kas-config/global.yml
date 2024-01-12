@@ -1,5 +1,5 @@
 header:
-  version: 5
+  version: 8
 
 # Set 'machine' to:
 # rpi4tpm for 64-bit Raspberry Pi 4 + TPM
@@ -16,6 +16,13 @@ repos:
     path: layers/
     layers:
       meta-uav:
+      
+  poky:
+    url: https://git.yoctoproject.org/poky.git
+    branch: #-REF_SPEC-#
+    layers:
+      meta:
+      meta-poky:
 
   meta-openembedded:
     url: https://git.openembedded.org/meta-openembedded
@@ -27,11 +34,6 @@ repos:
       meta-python:
       meta-networking:
       meta-filesystems:
-
-  meta-iot-cloud:
-    url: https://github.com/intel-iot-devkit/meta-iot-cloud.git
-    path: layers/meta-iot-cloud
-    branch: #-REF_SPEC-#
 
   meta-security:
     url: https://git.yoctoproject.org/git/meta-security

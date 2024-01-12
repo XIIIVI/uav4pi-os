@@ -8,6 +8,5 @@ inherit extrausers
 # Dollar signs ($) should be escaped with backslash characters (\).
 
 EXTRA_USERS_PARAMS += " useradd -P '#-USER_PASSWORD-#' #-USER_LOGIN-#; "
-EXTRA_USERS_PARAMS += " usermod -aG docker #-USER_LOGIN-#; "
 EXTRA_USERS_PARAMS += " usermod -aG sudo #-USER_LOGIN-#; "
 EXTRA_USERS_PARAMS += " usermod -P '#-ROOT_PASSWORD-#' root; "

@@ -4,21 +4,6 @@
 source ./scripts/commons.sh
 
 #
-# install_kas
-#   - param1: workdir
-#
-install_kas() {
-    local WORK_DIR_ARG="${1}"
-
-    log_info "[INSTALLING] Kas in ${WORK_DIR_ARG}/kas"
-
-    rm -Rf "${WORK_DIR_ARG}"/kas
-    git clone https://github.com/siemens/kas "${WORK_DIR_ARG}"/kas
-
-    export PATH=${WORK_DIR_ARG}/kas/kas-docker:${PATH}
-}
-
-#
 # display_help
 #
 display_help() {
@@ -73,10 +58,11 @@ replace_all_tokens() {
 #
 load_flavour_settings() {
     local SETTING_FILE_ARG="${1}"
-    shift
-    local TOKEN_LIST_ARG=("$@")
+    local TMP_FILE=$(mktemp)
 
     log_debug "\t- Preparing the environment from the file ${SETTING_FILE_ARG}"
+    cp "${SETTING_FILE_ARG}" "${TMP_FILE}"
+    echo "" >>"${TMP_FILE}"
 
     # Check if the file exists
     if [ -f "${SETTING_FILE_ARG}" ]; then
@@ -85,19 +71,16 @@ load_flavour_settings() {
             # Set environment variable
             export "${KEY}=${VALUE}"
 
-            TOKEN_LIST_ARG+=("${KEY}")
+            TOKEN_LIST+=("${KEY}")
 
             log_debug "\t\t- ${KEY}=${VALUE}"
-        done <"${SETTING_FILE_ARG}"
+        done <"${TMP_FILE}"
 
         log_debug "\t- Environment variables have been initialized."
 
     else
         log_error "\t- File not found: ${SETTING_FILE_ARG}"
     fi
-
-    # Return the modified array
-    echo "${TOKEN_LIST_ARG[@]}"
 }
 
 #
@@ -109,17 +92,30 @@ build_with_kas() {
     local FLAVOUR_ARG="${1}"
     local WORK_DIR_ARG="${2}"
 
-    install_kas "${WORK_DIR_ARG}"
+    log_debug "\t- Generating the kas configuration file ${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml from the flavour ${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour"
+    cat <<EOF >>"${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+header:
+  version: 11
+  includes:
+  - kas-config/base.yml
+  - kas-config/local.yml
+$(awk '{printf "  - kas-config/%s.yml\n", $0; if (NR!=1) printf ":"} END{print ""}' "${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour")
 
-    log_debug "Moving the custom meta-layers in ${WORK_DIR_ARG}/layers"
-    mkdir -p "${WORK_DIR_ARG}"/layers/meta-uav
-    mv "${WORK_DIR_ARG}"/meta-uav/* "${WORK_DIR_ARG}"/layers/meta-uav/
+repos:
+  meta-uav:
+    path: meta-uav
 
-    log_debug "\t- Building the image ${FLAVOUR_ARG} (${DISTRO}) with the following configuration files ${KAS_FILES}"
-    local KAS_FILES="${WORK_DIR_ARG}/kas-config/preferred_versions.yml:${WORK_DIR_ARG}/kas-config/local.yml:${WORK_DIR_ARG}/kas-config/poky.yml:${WORK_DIR_ARG}/kas-config/global.yml"
-    KAS_FILES+=":$(awk '{printf "'"${WORK_DIR_ARG}"'/kas-config/%s.yml", $0; if (NR!=1) printf ":"} END{print ""}' "${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour")"
-    log_debug "\t- Updated the list of KAS files to use based on the flavour ${FLAVOUR_ARG}: ${KAS_FILES}"
-    kas/kas-docker build "${KAS_FILES}"
+distro: ${DISTRO}
+
+target:
+  - ${FLAVOUR_ARG}
+
+machine: ${MACHINE}
+EOF
+
+    log_debug "\t- Building the image with kas using the configuration file ${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+    cat "${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+    kas build "${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
 }
 
 #
@@ -131,16 +127,15 @@ configure_yocto() {
     local FLAVOUR_ARG="${1}"
     local WORK_DIR_ARG="${2}"
     local CONF_DISTRO_DIR="${WORK_DIR_ARG}/meta-uav/conf/distro"
-    local DISTRO_VALUE="${DISTRO:=${FLAVOUR_ARG//[^[:alnum:]]/}os}"
 
-    log_debug "\t- Configuring the distro configuration file ${CONF_DISTRO_DIR}/${DISTRO_VALUE}.conf for Yocto"
-    cat <<EOF >>"${CONF_DISTRO_DIR}/${DISTRO_VALUE}".conf
+    log_debug "\t- Configuring the distro configuration file ${CONF_DISTRO_DIR}/${DISTRO}.conf for Yocto"
+    cat <<EOF >>"${CONF_DISTRO_DIR}/${DISTRO}".conf
 require conf/distro/commons.conf
 
-DISTRO = "${DISTRO_VALUE}"
-DISTRO_NAME = "${DISTRO_NAME:=${DISTRO_VALUE}}"
+DISTRO = "${DISTRO}"
+DISTRO_NAME = "${DISTRO_NAME:=${DISTRO}}"
 DISTRO_VERSION = "${DISTRO_VERSION}"
-DISTRO_CODENAME = "${DISTRO_CODENAME:=${DISTRO_VALUE}}"
+DISTRO_CODENAME = "${DISTRO_CODENAME:=${DISTRO}}"
 EOF
 
     log_debug "\t- Creating the recipe for the flavour ${FLAVOUR_ARG} in ${WORK_DIR_ARG}/meta-uav/recipes-${FLAVOUR_ARG}/images"
@@ -182,8 +177,6 @@ IMAGE_FEATURES += "\${EXTRA_IMAGE_FEATURES}"
 
 SDIMG_ROOTFS_TYPE = "ext4"
 
-BBMAASK += "libvorbis"
-
 # Common scripts
 IMAGE_INSTALL += "common-scripts"
 EOF
@@ -199,10 +192,10 @@ inherit extrausers
 #
 # Dollar signs ($) should be escaped with backslash characters (\).
 
-EXTRA_USERS_PARAMS += " useradd -P '#-USER_PASSWORD-#' #-USER_LOGIN-#; "
-EXTRA_USERS_PARAMS += " usermod -aG docker #-USER_LOGIN-#; "
-EXTRA_USERS_PARAMS += " usermod -aG sudo #-USER_LOGIN-#; "
-EXTRA_USERS_PARAMS += " usermod -P '#-ROOT_PASSWORD-#' root; "
+EXTRA_USERS_PARAMS += " useradd ${USER_LOGIN}; "
+EXTRA_USERS_PARAMS += " usermod -p '${USER_PASSWORD}' ${USER_LOGIN}; "
+# EXTRA_USERS_PARAMS += " usermod -aG sudo ${USER_LOGIN}; "
+EXTRA_USERS_PARAMS += " usermod -p '${ROOT_PASSWORD}' root; "
 EOF
 }
 
@@ -217,7 +210,7 @@ build_os_image() {
         local WORK_DIR=${WORK_DIR:="$(mktemp -d)"}
         local DIR_DELIVERY="${BASEDIR}/delivery/${FLAVOUR_ARG}"
         local DISTRO="${FLAVOUR_ARG//[^[:alnum:]]/}os"
-        local TOKEN_LIST=("DISTRO" "MACHINE" "REF_SPEC" "FLAVOUR" "WORK_DIR")
+        local TOKEN_LIST=("DIR_DATA" "DISTRO" "DISTRO_VERSION" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
 
         log_info "Generating the flavour ${FLAVOUR_ARG} in ${WORK_DIR}"
         log_debug "\t- Preparing the flavour"
@@ -232,17 +225,22 @@ build_os_image() {
         log_debug "\t- Cleaning previous deliveries for ${FILE_GENERATED_IMAGE}"
         rm -Rf "${DIR_DELIVERY:?}/${FILE_GENERATED_IMAGE}"
 
-        TOKEN_LIST=($(load_flavour_settings "${WORK_DIR}/flavours/${FLAVOUR_ARG}/settings" "${TOKEN_LIST[@]}"))
+        load_flavour_settings "${WORK_DIR}/flavours/${FLAVOUR_ARG}/settings" "${TOKEN_LIST[@]}"
+        log_debug "\t- Here is the update list of token ${TOKEN_LIST[*]}"
 
         configure_yocto "${FLAVOUR_ARG}" "${WORK_DIR}"
         replace_all_tokens "${TOKEN_LIST[@]}"
 
         build_with_kas "${FLAVOUR_ARG}" "${WORK_DIR}"
 
-        cp "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2" "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" &&
-            git reset --hard &&
-            log_debug "\t- [DONE] The generated image ${FILE_GENERATED_IMAGE} is available in ${DIR_DELIVERY}"
-        ls -alh "${DIR_DELIVERY}"
+        if [ -f "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2" ]; then
+            cp "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2" "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" &&
+                git reset --hard &&
+                log_debug "\t- [DONE] The generated image ${FILE_GENERATED_IMAGE} is available in ${DIR_DELIVERY}"
+            ls -alh "${DIR_DELIVERY}"
+        else
+            log_error "\t- [ERROR] The generated image ${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2 is not available in ${DIR_DELIVERY}"
+        fi
 
         if [ -f "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" ]; then
             log_info "Cleaning, please wait ..."
@@ -257,8 +255,6 @@ build_os_image() {
 # main
 #
 main() {
-    cat ./scripts/builder.banner
-
     # Parses the parameters
     while (("$#")); do
         case "$1" in
@@ -355,16 +351,16 @@ main() {
     DIR_DATA=${DIR_DATA:="/datadrive"}
     DISTRO_VERSION=${DISTRO_VERSION:="#-UNKNOWN_VERSION-#"}
     MACHINE=${MACHINE:="raspberrypi4-64"}
-    REF_SPEC=${REF_SPEC:="kirkstone"}
+    REF_SPEC=${REF_SPEC:="nanbield"}
     VERBOSE=${VERBOSE:="false"}
     ROOT_PASSWORD=${ROOT_PASSWORD:="Th3B0ss!"}
-    USER_LOGIN=${USER_LOGIN:="raspberry"}
+    USER_LOGIN=${USER_LOGIN:="uav"}
     USER_PASSWORD=${USER_PASSWORD:="JuR1_39"}
     CUSTOM_HOSTNAME=${CUSTOM_HOSTNAME:="${FLAVOUR}"}
     BASEDIR="${PWD}"
     DIR_WORK=${DIR_WORK:="${BASEDIR}"}
-
-    display_settings
+    DISTRO="${DISTRO:=${FLAVOUR//[^[:alnum:]]/}os}"
+    TMP_BANNER=$(mktemp).banner
 
     # Extract the version number
     GITVERSION_CONTENT=$(docker run --rm -v "$(pwd):/repo" gittools/gitversion:5.6.10-alpine.3.12-x64-3.1 /repo)
@@ -375,6 +371,11 @@ main() {
     else
         log_error "[ERROR] Failing using GitVersion, the distro version is ${DISTRO_VERSION}"
     fi
+
+    cp ./scripts/builder.banner "${TMP_BANNER}"
+    sed -i "s/#-DISTRO_VERSION-#/${DISTRO_VERSION}/g" "${TMP_BANNER}"
+    cat "${TMP_BANNER}"
+    display_settings
 
     case "${COMMAND}" in
     build)

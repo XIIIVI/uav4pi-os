@@ -1,17 +1,18 @@
 header:
-  version: 5
+  version: 11
 
 repos:
   meta-raspberrypi:
-    url: https://github.com/agherzan/meta-raspberrypi
-    path: layers/meta-raspberrypi
+    url: https://github.com/agherzan/meta-raspberrypi.git
     branch: #-REF_SPEC-#
 
 local_conf_header:
-  z50-raspberry: |
-    # Configure the image FS type
-    #IMAGE_FSTYPES_remove = "ext3 wic.bz2 wic.bmap"
-    #IMAGE_FSTYPES += " tar "
-    #IMAGE_FSTYPES_DEBUGFS = " tar "
+  raspberrypi: |
+    RPI_USE_U_BOOT = "1"
+    ENABLE_UART = "1"
+    MENDER_BOOT_PART_SIZE_MB = "100"
+    IMAGE_INSTALL:append = " kernel-image kernel-devicetree"
+    IMAGE_FSTYPES:remove = " rpi-sdimg"
 
-    # RPI_USE_U_BOOT = "1"
+    # Recipes to ignore
+    BBMASK += "/meta-raspberrypi/recipes-multimedia/*"

@@ -12,7 +12,7 @@ do_start() {
     sn=$(sed -ne 's/^Serial[ \t]*:[ \t]*\([0-9A-Fa-f]*\)$/\1/;T;p' </proc/cpuinfo)
 
     if [ -n "${sn}" ]; then
-        hostname="#-HOSTNAME-#-${sn}"
+        hostname="#-PREDEFINED_HOSTNAME-#-${sn}"
         hostname "${hostname}"
         echo "${hostname}" >/run/hostname/hostname
         mount --bind /run/hostname/hostname /etc/hostname

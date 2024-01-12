@@ -1,5 +1,5 @@
 [Unit]
-Description=Set hostname for #-HOSTNAME-#
+Description=Set hostname with #-PREDEFINED_HOSTNAME-#
 DefaultDependencies=false
 Before=local-fs.target
 
@@ -9,8 +9,8 @@ StandardOutput=journal
 StandardError=journal
 RemainAfterExit=yes
 # FIXME: hardcoded libexec path
-ExecStart=/usr/libexec/#-HOSTNAME-#-hostname start
-ExecStop=/usr/libexec/#-HOSTNAME-#-hostname stop
+ExecStart=/usr/libexec/#-PREDEFINED_HOSTNAME-#-hostname start
+ExecStop=/usr/libexec/#-PREDEFINED_HOSTNAME-#-hostname stop
 
 [Install]
 WantedBy=systemd-hostnamed.service

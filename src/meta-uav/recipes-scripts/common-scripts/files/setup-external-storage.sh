@@ -64,18 +64,18 @@ STORAGE_TYPE="${1}"
 
 STORAGE_NAME=$(lsblk -o NAME | grep -i "${STORAGE_TYPE}")
 
-if [ -n "${STORAGE_NAME}}" ]; then
+if [ -n "${STORAGE_NAME}" ]; then
     log_info "Initializing the storage ${STORAGE_NAME}"
     DIR_DATA_FOLDER=#-DIR_DATA-#
 
-    parted /dev/${STORAGE_NAME} --script mklabel gpt mkpart xfspart xfs 0% 100%
-    mkfs.xfs -f /dev/${STORAGE_NAME}
-    partprobe /dev/${STORAGE_NAME}
+    parted "/dev/${STORAGE_NAME}" --script mklabel gpt mkpart xfspart xfs 0% 100%
+    mkfs.xfs -f "/dev/${STORAGE_NAME}"
+    partprobe "/dev/${STORAGE_NAME}"
 
     log_info "Mounting the disk ${STORAGE_NAME} on data folder ${DIR_DATA_FOLDER}"
     mkdir -p "${DIR_DATA_FOLDER}"
-    mount /dev/${STORAGE_NAME} "${DIR_DATA_FOLDER}"
-    VIRGIN_DISK_UUID=$(blkid | grep ${STORAGE_NAME} | awk '{ print $2 }' | sed 's/=/ /g' | awk '{ print $2 }' | sed 's/"//g')
+    mount "/dev/${STORAGE_NAME}" "${DIR_DATA_FOLDER}"
+    VIRGIN_DISK_UUID=$(blkid | grep "${STORAGE_NAME}" | awk '{ print $2 }' | sed 's/=/ /g' | awk '{ print $2 }' | sed 's/"//g')
 
     log_info "Associating the UUID ${VIRGIN_DISK_UUID} with the folder ${DIR_DATA_FOLDER} in /etc/fstab"
     echo "UUID=${VIRGIN_DISK_UUID}   ${DIR_DATA_FOLDER}   xfs   defaults,discard   1   2" | tee -a /etc/fstab
