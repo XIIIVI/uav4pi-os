@@ -208,17 +208,19 @@ build_os_image() {
 
     if [ -f "${BASEDIR}/src/flavours/${FLAVOUR_ARG}/flavour" ]; then
         local WORK_DIR=${WORK_DIR:="$(mktemp -d)"}
-        local DIR_DELIVERY="${BASEDIR}/delivery/${FLAVOUR_ARG}"
         local DISTRO="${FLAVOUR_ARG//[^[:alnum:]]/}os"
-        local TOKEN_LIST=("DIR_DATA" "DISTRO" "DISTRO_VERSION" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
+        local DIR_DELIVERY="/tmp/${DISTRO}/delivery"
+        local TOKEN_LIST=("DIR_DATA" "DIR_DELIVERY" "DISTRO" "DISTRO_VERSION" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
+        local DIR_DIST="${BASEDIR}/dist"
 
-        log_info "Generating the flavour ${FLAVOUR_ARG} in ${WORK_DIR}"
+        rm -Rf "${DIR_DIST}"
+
+        log_info "\n+--------------------------------------------------------------------+"
+        log_info "| Generating the flavour ${FLAVOUR_ARG} in ${WORK_DIR}"
+        log_info "+--------------------------------------------------------------------+"
         log_debug "\t- Preparing the flavour"
         cp -R "${BASEDIR}"/src/** "${WORK_DIR}/"
         cd "${WORK_DIR}" || exit
-
-        log_debug "\t- Preparing the delivery folder ${DIR_DELIVERY}"
-        mkdir -p "${DIR_DELIVERY}"
 
         FILE_GENERATED_IMAGE="${FLAVOUR_ARG}-${MACHINE}-${DISTRO_VERSION}.wic.bz2"
 
@@ -233,18 +235,15 @@ build_os_image() {
 
         build_with_kas "${FLAVOUR_ARG}" "${WORK_DIR}"
 
-        if [ -f "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2" ]; then
-            cp "${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2" "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" &&
-                git reset --hard &&
-                log_debug "\t- [DONE] The generated image ${FILE_GENERATED_IMAGE} is available in ${DIR_DELIVERY}"
-            ls -alh "${DIR_DELIVERY}"
-        else
-            log_error "\t- [ERROR] The generated image ${DIR_WORK}/build/tmp/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.wic.bz2 is not available in ${DIR_DELIVERY}"
-        fi
+        if [ -n "$(find "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/" -maxdepth 1 -type l -name "${FLAVOUR_ARG}-${MACHINE}.*")" ]; then
+            mkdir -p "${DIR_DIST}"
 
-        if [ -f "${DIR_DELIVERY}/${FILE_GENERATED_IMAGE}" ]; then
-            log_info "Cleaning, please wait ..."
-            kas/kas-docker clean
+            cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.*" "${DIR_DIST}/" &&
+                git reset --hard &&
+                log_debug "\t- [DONE] The generated images are available in ${DIR_DIST}"
+            ls -alh "${DIR_DIST}"
+        else
+            log_error "\t- [ERROR] Found no images in  ${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}"
         fi
     else
         log_error "The flavour ${WORK_DIR}/flavours/${FLAVOUR_ARG}/flavour does not exist"
