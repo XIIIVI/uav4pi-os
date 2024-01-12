@@ -238,9 +238,9 @@ build_os_image() {
         if [ -n "$(find "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/" -maxdepth 1 -type l -name "${FLAVOUR_ARG}-${MACHINE}.*")" ]; then
             mkdir -p "${DIR_DIST}"
 
-            cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}.*" "${DIR_DIST}/" &&
-                git reset --hard &&
-                log_debug "\t- [DONE] The generated images are available in ${DIR_DIST}"
+            cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}".* "${DIR_DIST}/"
+            git reset --hard
+            log_debug "\t- [DONE] The generated images are available in ${DIR_DIST}"
             ls -alh "${DIR_DIST}"
         else
             log_error "\t- [ERROR] Found no images in  ${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}"
