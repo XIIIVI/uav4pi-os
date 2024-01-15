@@ -9,6 +9,7 @@ source ./scripts/commons.sh
 display_help() {
     log_debug "Usage: ${0} [--build|clean] (build (default) the image or clean the repository)"
     log_debug "            [--data-dir <Folder> (Set the folder containing user's data)]"
+    log_debug "            [--delivery-dir <Folder where the images will be copied at the end of the process>]"
     log_debug "            --flavour <one of the configuration folder src/flavours>"
     log_debug "            [--hostname <Hostname prefix>]"
     log_debug "            [--machine raspberrypi-cm | raspberrypi-cm3 | raspberrypi | raspberrypi0-wifi | raspberrypi0 | raspberrypi2 | raspberrypi3-64 | raspberrypi3 | raspberrypi4-64 | raspberrypi4] (default raspberrypi4-64)"
@@ -28,6 +29,7 @@ display_settings() {
     log_debug "S E T T I N G S"
     log_debug "COMMAND              : ${COMMAND}"
     log_debug "CUSTOM_HOSTNAME      : ${CUSTOM_HOSTNAME}"
+    log_debug "DIR_DIST             : ${DIR_DIST}"
     log_debug "DISTRO               : ${DISTRO}"
     log_debug "DISTRO_VERSION       : ${DISTRO_VERSION}"
     log_debug "FLAVOUR              : ${FLAVOUR}"
@@ -58,11 +60,12 @@ replace_all_tokens() {
 #
 load_flavour_settings() {
     local SETTING_FILE_ARG="${1}"
-    local TMP_FILE=$(mktemp)
+    local TMP_FILE="$(mktemp)"
 
     log_debug "\t- Preparing the environment from the file ${SETTING_FILE_ARG}"
     cp "${SETTING_FILE_ARG}" "${TMP_FILE}"
     echo "" >>"${TMP_FILE}"
+    dos2unix "${TMP_FILE}"
 
     # Check if the file exists
     if [ -f "${SETTING_FILE_ARG}" ]; then
@@ -79,7 +82,7 @@ load_flavour_settings() {
         log_debug "\t- Environment variables have been initialized."
 
     else
-        log_error "\t- File not found: ${SETTING_FILE_ARG}"
+        log_error "\t- The settings file is missing: ${SETTING_FILE_ARG}"
     fi
 }
 
@@ -91,15 +94,31 @@ load_flavour_settings() {
 build_with_kas() {
     local FLAVOUR_ARG="${1}"
     local WORK_DIR_ARG="${2}"
+    local TMP_FILE="$(mktemp)"
+    local FILE_FLAVOUR="${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour"
 
-    log_debug "\t- Generating the kas configuration file ${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml from the flavour ${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour"
-    cat <<EOF >>"${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+    log_debug "\t- Generating the kas configuration file ${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml from the flavour ${FILE_FLAVOUR}"
+    cp "${FILE_FLAVOUR}" "${TMP_FILE}"
+    echo "" >>"${TMP_FILE}"
+    dos2unix "${TMP_FILE}"
+
+    # Check if the file exists
+    if [ -f "${FILE_FLAVOUR}" ]; then
+        cat <<EOF >"${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
 header:
   version: 11
   includes:
-  - kas-config/base.yml
-  - kas-config/local.yml
-$(awk '{printf "  - kas-config/%s.yml\n", $0; if (NR!=1) printf ":"} END{print ""}' "${WORK_DIR_ARG}/flavours/${FLAVOUR_ARG}/flavour")
+  - features/base.yml
+  - features/local.yml
+EOF
+
+        # Read the file line by line
+        while IFS='=' read -r LINE; do
+            log_debug "\t\t- Adding the feature ${LINE}"
+            echo "  - features/${LINE}.yml" >>"${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+        done <"${TMP_FILE}"
+
+        cat <<EOF >>"${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
 
 repos:
   meta-uav:
@@ -113,9 +132,12 @@ target:
 machine: ${MACHINE}
 EOF
 
-    log_debug "\t- Building the image with kas using the configuration file ${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
-    cat "${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
-    kas build "${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+        cat "${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+        log_debug "\t- Building the image with kas using the configuration file ${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+        kas build "${WORK_DIR_ARG}/${FLAVOUR_ARG}.yml"
+    else
+        log_error "\t- The flavour file is missing: ${FILE_FLAVOUR}"
+    fi
 }
 
 #
@@ -201,19 +223,19 @@ EOF
 
 #
 # build_os_image
-#   - param1: flavour to generate
+#   - param1: the flavour to generate
+#   - param2: the folder where to store the images
 #
 build_os_image() {
     local FLAVOUR_ARG="${1}"
+    local DIR_DIST_ARG="${2}"
 
     if [ -f "${BASEDIR}/src/flavours/${FLAVOUR_ARG}/flavour" ]; then
         local WORK_DIR=${WORK_DIR:="$(mktemp -d)"}
         local DISTRO="${FLAVOUR_ARG//[^[:alnum:]]/}os"
         local DIR_DELIVERY="/tmp/${DISTRO}/delivery"
         local TOKEN_LIST=("DIR_DATA" "DIR_DELIVERY" "DISTRO" "DISTRO_VERSION" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
-        local DIR_DIST="${BASEDIR}/dist"
-
-        rm -Rf "${DIR_DIST}"
+        local DIR_IMAGE_DELIVERY="${DIR_DIST_ARG}/${FLAVOUR_ARG}"
 
         log_info "\n+--------------------------------------------------------------------+"
         log_info "| Generating the flavour ${FLAVOUR_ARG} in ${WORK_DIR}"
@@ -236,12 +258,12 @@ build_os_image() {
         build_with_kas "${FLAVOUR_ARG}" "${WORK_DIR}"
 
         if [ -n "$(find "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/" -maxdepth 1 -type l -name "${FLAVOUR_ARG}-${MACHINE}.*")" ]; then
-            mkdir -p "${DIR_DIST}"
+            mkdir -p "${DIR_IMAGE_DELIVERY}"
 
-            cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}".* "${DIR_DIST}/"
+            cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}".* "${DIR_IMAGE_DELIVERY}/"
             git reset --hard
-            log_debug "\t- [DONE] The generated images are available in ${DIR_DIST}"
-            ls -alh "${DIR_DIST}"
+            log_debug "\t- [DONE] The generated images are available in ${DIR_IMAGE_DELIVERY}"
+            ls -alh "${DIR_IMAGE_DELIVERY}"
         else
             log_error "\t- [ERROR] Found no images in  ${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}"
         fi
@@ -264,6 +286,11 @@ main() {
         --clean)
             COMMAND="clean"
             shift # past argument
+            ;;
+        --delivery-dir)
+            DIR_DIST="${2}"
+            shift # past argument
+            shift # past value
             ;;
         --flavour)
             FLAVOUR="${2,,}"
@@ -359,6 +386,7 @@ main() {
     BASEDIR="${PWD}"
     DIR_WORK=${DIR_WORK:="${BASEDIR}"}
     DISTRO="${DISTRO:=${FLAVOUR//[^[:alnum:]]/}os}"
+    DIR_DIST="${DIR_DIST:=${BASEDIR}/dist}"
     TMP_BANNER=$(mktemp).banner
 
     # Extract the version number
@@ -379,12 +407,16 @@ main() {
     case "${COMMAND}" in
     build)
         check_all_mandatory_parameters "FLAVOUR"
-        build_os_image "${FLAVOUR}"
+        log_info "Cleaning the distribution folder ${DIR_DIST}"
+        rm -Rf "${DIR_DIST}"
+        mkdir -p "${DIR_DIST}"
+
+        build_os_image "${FLAVOUR}" "${DIR_DIST}"
         ;;
 
     clean)
         log_info "Cleaning the environment"
-        kas/kas-docker clean
+        kas clean
         ;;
     *)
         log_error "Missing command (--build, --clean)"
