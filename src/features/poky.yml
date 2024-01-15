@@ -5,7 +5,7 @@ repos:
   poky:
     url: https://git.yoctoproject.org/git/poky
     path: layers/poky
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
     layers:
       meta:
       meta-poky:

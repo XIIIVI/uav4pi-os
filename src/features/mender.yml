@@ -4,7 +4,7 @@ header:
 repos:
   meta-mender:
     url: https://github.com/mendersoftware/meta-mender.git
-    refspec: c0f539ffedba6070963abe64c67c4c5d8b1ec872
+    branch: "#-REF_SPEC-#"
     layers:
       meta-mender-core:
 

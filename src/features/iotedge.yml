@@ -11,12 +11,12 @@ repos:
   meta-iotedge:
     url: https://github.com/Azure/meta-iotedge.git
     path: layers/meta-iotedge
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
 
   meta-tpm:
     url: https://git.yoctoproject.org/git/meta-security
     path: layers/meta-security
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
     layers:
       meta-tpm:
 

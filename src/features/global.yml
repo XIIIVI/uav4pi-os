@@ -19,7 +19,7 @@ repos:
       
   poky:
     url: https://git.yoctoproject.org/poky.git
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
     layers:
       meta:
       meta-poky:
@@ -27,7 +27,7 @@ repos:
   meta-openembedded:
     url: https://git.openembedded.org/meta-openembedded
     path: layers/meta-openembedded
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
     layers:
       meta-oe:
       meta-perl:  
@@ -38,7 +38,7 @@ repos:
   meta-security:
     url: https://git.yoctoproject.org/git/meta-security
     path: layers/meta-security
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
 
 bblayers_conf_header:
   meta-custom: |

@@ -214,7 +214,7 @@ inherit extrausers
 #
 # Dollar signs ($) should be escaped with backslash characters (\).
 
-EXTRA_USERS_PARAMS += " useradd ${USER_LOGIN}; "
+EXTRA_USERS_PARAMS += " useradd ${USER_LOGIN};"
 EXTRA_USERS_PARAMS += " usermod -p '${USER_PASSWORD}' ${USER_LOGIN}; "
 # EXTRA_USERS_PARAMS += " usermod -aG sudo ${USER_LOGIN}; "
 EXTRA_USERS_PARAMS += " usermod -p '${ROOT_PASSWORD}' root; "
@@ -236,6 +236,9 @@ build_os_image() {
         local DIR_DELIVERY="/tmp/${DISTRO}/delivery"
         local TOKEN_LIST=("DIR_DATA" "DIR_DELIVERY" "DISTRO" "DISTRO_VERSION" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
         local DIR_IMAGE_DELIVERY="${DIR_DIST_ARG}/${FLAVOUR_ARG}"
+
+        rm -Rf "${DIR_DELIVERY}"
+        mkdir -p "${DIR_DELIVERY}"
 
         log_info "\n+--------------------------------------------------------------------+"
         log_info "| Generating the flavour ${FLAVOUR_ARG} in ${WORK_DIR}"

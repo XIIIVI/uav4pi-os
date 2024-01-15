@@ -4,7 +4,7 @@ header:
 repos:
   meta-raspberrypi:
     url: https://github.com/agherzan/meta-raspberrypi.git
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
 
 local_conf_header:
   raspberrypi: |
@@ -16,3 +16,5 @@ local_conf_header:
 
     # Recipes to ignore
     BBMASK += "/meta-raspberrypi/recipes-multimedia/*"
+
+    LICENSE_FLAGS_ACCEPTED:append = "synaptics-killswitch"

@@ -5,11 +5,11 @@ repos:
   meta-virtualization:
     url: https://git.yoctoproject.org/git/meta-virtualization
     path: layers/meta-virtualization
-    branch: #-REF_SPEC-#
+    branch: "#-REF_SPEC-#"
 
   meta-openembedded:
     url: https://git.openembedded.org/meta-openembedded
-    commit: 346753705e49a2486867dc150181a1c7f4d69377
+    branch: "#-REF_SPEC-#"
     layers:
       meta-filesystems:
       meta-networking:
@@ -19,4 +19,7 @@ local_conf_header:
   virtualization: |
     DISTRO_FEATURES:append = " virtualization"
     DISTRO_FEATURES:append = " seccomp"
-    IMAGE_INSTALL:append = " docker-ce"
+    IMAGE_INSTALL:append = " docker"
+    
+    EXTRA_USERS_PARAMS += " useradd -p '#-USER_PASSWORD-#' #-USER_LOGIN-#-docker; "
+    EXTRA_USERS_PARAMS += " usermod -aG docker #-USER_LOGIN-#-docker; "
