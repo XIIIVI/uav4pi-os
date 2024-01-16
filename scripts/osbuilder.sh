@@ -265,10 +265,10 @@ build_os_image() {
 
             cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}".* "${DIR_IMAGE_DELIVERY}/"
             git reset --hard
-            log_debug "\t- [DONE] The generated images are available in ${DIR_IMAGE_DELIVERY}"
+            log_info "[DONE] The generated images are available in ${DIR_IMAGE_DELIVERY}"
             ls -alh "${DIR_IMAGE_DELIVERY}"
         else
-            log_error "\t- [ERROR] Found no images in  ${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}"
+            log_error "[ERROR] Found no images in ${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}"
         fi
     else
         log_error "The flavour ${WORK_DIR}/flavours/${FLAVOUR_ARG}/flavour does not exist"
