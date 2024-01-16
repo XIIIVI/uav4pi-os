@@ -19,7 +19,6 @@ local_conf_header:
   virtualization: |
     DISTRO_FEATURES:append = " virtualization"
     DISTRO_FEATURES:append = " seccomp"
-    IMAGE_INSTALL:append = " docker"
     
-    EXTRA_USERS_PARAMS += " useradd -p '#-USER_PASSWORD-#' #-USER_LOGIN-#-docker; "
-    EXTRA_USERS_PARAMS += " usermod -aG docker #-USER_LOGIN-#-docker; "
+    IMAGE_INSTALL:append = " podman"
+    IMAGE_INSTALL:append = " podman-compose"
