@@ -1,0 +1,22 @@
+header:
+  version: 11
+
+repos:
+  openembedded-core:
+    url: http://git.openembedded.org/openembedded-core
+    branch: "#-REF_SPEC-#"
+    layers:
+      meta:
+
+  meta-openembedded:
+    url: https://git.openembedded.org/meta-openembedded
+    branch: "#-REF_SPEC-#"
+    layers:
+      meta-networking:
+      meta-oe:
+
+local_conf_header:
+  router: |
+    DISTRO_FEATURES += "wifi"
+
+    IMAGE_INSTALL:append = " gcu-router"

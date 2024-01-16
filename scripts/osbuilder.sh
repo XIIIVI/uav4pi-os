@@ -264,7 +264,6 @@ build_os_image() {
             mkdir -p "${DIR_IMAGE_DELIVERY}"
 
             cp "${DIR_DELIVERY}-glibc/deploy/images/${MACHINE}/${FLAVOUR_ARG}-${MACHINE}".* "${DIR_IMAGE_DELIVERY}/"
-            git reset --hard
             log_info "[DONE] The generated images are available in ${DIR_IMAGE_DELIVERY}"
             ls -alh "${DIR_IMAGE_DELIVERY}"
         else
