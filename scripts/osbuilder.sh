@@ -33,6 +33,8 @@ display_settings() {
     log_debug "DISTRO               : ${DISTRO}"
     log_debug "DISTRO_VERSION       : ${DISTRO_VERSION}"
     log_debug "FLAVOUR              : ${FLAVOUR}"
+    log_debug "GCU_PASSWORD         : ${GCU_PASSWORD}"
+    log_debug "GCU_SSID             : ${GCU_SSID}"
     log_debug "MACHINE              : ${MACHINE}"
     log_debug "REF_SPEC             : ${REF_SPEC}"
     log_debug "ROOT_PASSWORD        : ${ROOT_PASSWORD}"
@@ -234,7 +236,9 @@ build_os_image() {
         local WORK_DIR=${WORK_DIR:="$(mktemp -d)"}
         local DISTRO="${FLAVOUR_ARG//[^[:alnum:]]/}os"
         local DIR_DELIVERY="/tmp/${DISTRO}/delivery"
-        local TOKEN_LIST=("DIR_DATA" "DIR_DELIVERY" "DISTRO" "DISTRO_VERSION" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
+        local GCU_SSID="${GCU_SSID:="wifi-uav4pi"}"
+        local GCU_PASSWORD="${GCU_PASSWORD:="uav4pi"}"
+        local TOKEN_LIST=("DIR_DATA" "DIR_DELIVERY" "DISTRO" "DISTRO_VERSION" "GCU_PASSWORD" "GCU_SSID" "MACHINE" "REF_SPEC" "FLAVOUR" "USER_PASSWORD" "USER_LOGIN" "WORK_DIR")
         local DIR_IMAGE_DELIVERY="${DIR_DIST_ARG}/${FLAVOUR_ARG}"
 
         rm -Rf "${DIR_DELIVERY}"

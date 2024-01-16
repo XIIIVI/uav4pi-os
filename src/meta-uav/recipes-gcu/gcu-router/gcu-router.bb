@@ -1,9 +1,15 @@
-# my-access-point-image.bb
-
 SUMMARY = "Custom Access Point Image"
 DESCRIPTION = "Custom Yocto image with Access Point configuration"
 
-LICENSE = "MIT"
+LICENSE = "CLOSED"
+
+SRC_URI = " \
+    file://hostapd.conf \
+"
+
+do_install () {
+    install -m 0444 -D ${WORKDIR}/hostapd.conf ${D}/etc/hostapd.conf
+}
 
 # Specify the packages to include in the image
 IMAGE_INSTALL:append = " \
@@ -49,3 +55,5 @@ EXTRA_USERS_PARAMS += "\
 EXTRA_USERS_PARAMS += "\
     echo '/etc/init.d/dnsmasq start' >> ${IMAGE_ROOTFS}/etc/rc.local; \
     "
+
+FILES:${PN} += "/etc/hostapd.conf"
