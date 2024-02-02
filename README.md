@@ -1,3 +1,4 @@
+[[_TOC_]]
 
 ---
 # uav4pi-os
@@ -9,7 +10,9 @@ This project provides tools to build embedded Linux for the UAV, the ground stat
 ## Required packages
 
 To work, the **OS builder** requires the following packages to be installed
-`sudo install -y dos2unix`
+* `sudo install -y dos2unix` to remove any invalid characters (e.g Windows characters),
+* `sudo apt install -y flatbuffers-compiler` to convert MavLink XML messages into FlatBuffers,
+* `pip install xq` for XML parsing
 
 ## KAS
 The builder uses [KAS](https://github.com/siemens/kas) that should be installed with `pip install kas`.
